@@ -1,0 +1,7 @@
+{
+    "python.analysis.extraPaths": [
+        "./leapc-python-bindings-main/leapc-python-api/src",
+        "./Testing/leapc-python-bindings-main/leapc-python-api/src",
+        "./Final/leapc-python-bindings-main/leapc-python-api/src"
+    ]
+}
