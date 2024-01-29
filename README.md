@@ -8,4 +8,8 @@ The current supported signed words is:
 -  Book
 -  I Love You
 
-The current prototype is making use of Python, TensorFlow, an UltraLeap Motion Controller 2, and the Python Wrapper for the LeapC SDK.
+The current prototype makes use of these technologies:
+-  Python
+-  TensorFlow
+-  UltraLeap Motion Controller 2
+-  Python Wrapper for the LeapC SDK.
