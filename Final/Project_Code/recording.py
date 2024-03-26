@@ -106,7 +106,6 @@ def save_recording():
     else:
         print('Recording not saved.')
     
-
 def main():
     listener = HandListener()
 

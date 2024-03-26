@@ -18,7 +18,7 @@ batch_size = 15
 hand_colour = (255, 255, 255)
 
 # normal model
-asl_model = tf.keras.models.load_model("Final/asl_v2_3_30fps.keras")
+asl_model = tf.keras.models.load_model("Final/asl_v2_6_30fps.keras")
 
 # tf lite model
 # lite_asl = tf_custom.load_tflite_model("Final/asl_v2_5_30fps.tflite")
