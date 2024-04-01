@@ -7,6 +7,7 @@ os.environ['TF_CPP_MIN_LOG_LEVEL'] = '2'
 import numpy as np
 import tensorflow as tf
 import normalize_data as normalize
+import train_new_dataset as preprocess
 import recording as record
 import tf_train as tf_custom
 
@@ -17,19 +18,11 @@ batch_size = 15
 
 hand_colour = (255, 255, 255)
 
+labels_list = tf_custom.read_labels_from_file("ck_mixed_dataset_gesture_filtered.txt")
+
 # normal model
-asl_model = tf.keras.models.load_model("Final/asl_v2_6_30fps.keras")
+asl_model = tf.keras.models.load_model("Final/asl_v3_5_ck_mixed_500epoch_earlystop_true_mid_complex_model.keras")
 
-# tf lite model
-# lite_asl = tf_custom.load_tflite_model("Final/asl_v2_5_30fps.tflite")
-
-
-# quantized model
-# quant_asl_model = tf.lite.Interpreter(model_path="Final/asl_quantized_v1.tflite")
-# quant_asl_model.allocate_tensors()
-
-# quant_input_details = quant_asl_model.get_input_details()
-# quant_output_details = quant_asl_model.get_output_details()
 
 predicted_gesture = ""
 predicted_confidence = ""
@@ -153,14 +146,14 @@ class Canvas:
 
             # continually push the last 6 frames. add one frame to the dict, remove the first.
             # then check against model 
-            if event.tracking_frame_id % 4 == 0:
+            if event.tracking_frame_id % 1.5 == 0:
                 hand_type = 'Left' if str(hand.type) == 'HandType.Left' else 'Right'
                 hands_data[hand_type].append(record.hand_to_json(hand))
                 hands_data['Count'] += 1
 
-                if hands_data['Count'] == 45:
-                    # Process the 45 hand frames
-                    print('Processing 45 hand frames.')
+                if hands_data['Count'] == 90:
+                    # Process the 90 hand frames
+                    print('Processing 90 hand frames.')
                     
                     ###################################################################################################################
 
@@ -168,16 +161,13 @@ class Canvas:
                     # measuring what takes the longest amount of time
                     # Start time for normalization and aggregation
                     start_time_aggregate = time.time()
-                    input_gesture_data = normalize.aggregate_gesture_data_non_file(hands_data)
+                    input_gesture_data = preprocess.aggregate_gesture_data_non_file(hands_data)
                     end_time_aggregate = time.time()
                     print(f"Normalization and aggregation time: {end_time_aggregate - start_time_aggregate} seconds")
 
                     # Start time for prediction
                     start_time_predict = time.time()
-                    predicted_gesture, predicted_confidence = tf_custom.predict_new_gesture_prenormalized(input_gesture_data, asl_model)
-
-                    # TF LITE
-                    # predicted_gesture, predicted_confidence = tf_custom.predict_new_gesture_tflite(input_gesture_data, lite_asl)
+                    predicted_gesture, predicted_confidence = tf_custom.predict_new_gesture_prenormalized(input_gesture_data, asl_model, labels_list)
 
 
                     if predicted_confidence > 90.0:
@@ -194,33 +184,11 @@ class Canvas:
                     print(f"Prediction time: {end_time_predict - start_time_predict} seconds")
 
                     print(f"The predicted gesture is: {predicted_gesture}, with a confidence of {predicted_confidence}%")
-                    
-                    
-                    
-                    ###################################################################################################################
-
-                    # # quantized model
-                    # input_gesture_data = normalize.aggregate_gesture_data_non_file(hands_data)
-                    # input_gesture_data = np.expand_dims(input_gesture_data, axis=0).astype(np.float32)
-
-                    # input_gesture_data = input_gesture_data.reshape(-1, 60) # reshape for a single sample
-                    # quant_asl_model.set_tensor(quant_input_details[0]['index'], input_gesture_data)
-                    # quant_asl_model.invoke()
-
-                    # quant_output_data = quant_asl_model.get_tensor(quant_output_details[0]['index'])
-
-                    # quant_predicted_class = np.argmax(quant_output_data, axis=1)
-                    # predicted_confidence = np.max(quant_output_data) * 100
-
-                    # class_labels = {0: 'book', 1: 'hello', 2: 'I love you'} 
-                    # predicted_gesture = class_labels[quant_predicted_class[0]]
-
-                    ###################################################################################################################
 
                     # Remove the first 15 frames
-                    hands_data['Left'] = hands_data['Left'][-30:]
-                    hands_data['Right'] = hands_data['Right'][-30:]
-                    hands_data['Count'] = 30
+                    hands_data['Left'] = hands_data['Left'][-60:]
+                    hands_data['Right'] = hands_data['Right'][-60:]
+                    hands_data['Count'] = 60
 
         # remove an entry if no hand in the detected area.
         if len(event.hands) == 1:

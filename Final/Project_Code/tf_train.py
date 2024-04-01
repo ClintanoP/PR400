@@ -25,9 +25,10 @@ import numpy as np
 import glob
 from sklearn.model_selection import train_test_split
 import tensorflow as tf
-from keras import layers, models
+from keras import layers, models, regularizers
 from keras.callbacks import EarlyStopping
 import normalize_data as normalize
+import train_new_dataset as preprocess
 
 
 # getting the file paths
@@ -144,10 +145,9 @@ def read_labels_from_file(file_path):
     return labels
 
 def test_train_main():
-    gesture_file_paths = get_file_paths('C:/Users/Ck/Desktop/asl-skeleton3d/ck_normalised/')
-
+    gesture_file_paths = preprocess.get_file_paths_and_save_filtered_counts('Final/JSON_Data/120fps/')
     # Read labels from the text file
-    labels_list = read_labels_from_file("gesture_filtered.txt")
+    labels_list = read_labels_from_file("ck_mixed_dataset_gesture_filtered.txt")
 
     # Initialize empty lists to hold aggregated data and labels
     all_gesture_data = []
@@ -158,7 +158,7 @@ def test_train_main():
 
     # Loop through each label, load and process the gesture data, and generate labels
     for i, label in enumerate(labels_list):
-        gesture_data = normalize.aggregate_gesture_data(gesture_file_paths[label])
+        gesture_data = preprocess.aggregate_gesture_data(gesture_file_paths[label])
         all_gesture_data.append(gesture_data)
         
         # Generate and store labels for the current gesture data
@@ -168,22 +168,24 @@ def test_train_main():
         # Store label value in the dictionary
         label_values[label] = i
         print(f"Label: {label}, Value: {i}")
+        print(f"Shape of gesture data: {gesture_data.shape}, Shape of labels: {labels.shape}")
+
 
     # Concatenate all gesture data and labels to form the dataset
-    X = np.concatenate(all_gesture_data)
-    y = np.concatenate(all_labels)
+    X = np.concatenate(all_gesture_data, axis=0)
+    y = np.concatenate(all_labels, axis=0)
     print(f"Shape of X: {X.shape}, Shape of y: {y.shape}")
 
     X_train, X_temp, y_train, y_temp = train_test_split(X, y, test_size=0.3, random_state=42, stratify=y)
     X_val, X_test, y_val, y_test = train_test_split(X_temp, y_temp, test_size=0.5, random_state=42, stratify=y_temp)
 
-    X_train = X_train[..., np.newaxis]  # Adding a new axis to fit the model's expected input
-    X_val = X_val[..., np.newaxis]
-    X_test = X_test[..., np.newaxis]
+    # X_train = X_train[..., np.newaxis]  # Adding a new axis to fit the model's expected input
+    # X_val = X_val[..., np.newaxis]
+    # X_test = X_test[..., np.newaxis]
 
     early_stopping = EarlyStopping(
         monitor='val_loss',  # Monitor the model's validation loss
-        patience=5,          # Number of epochs with no improvement after which training will be stopped
+        patience=10,          # Number of epochs with no improvement after which training will be stopped
         verbose=1,           # Log when training is stopped
         restore_best_weights=True  # Restore model weights from the epoch with the best value of the monitored quantity
     )
@@ -193,7 +195,7 @@ def test_train_main():
 
     input_shape = (X_train.shape[1], 1)  # This needs to be adjusted based on the actual sequence length and features
 
-    model_with_dropout = create_1d_cnn_model_with_dropout((X_train.shape[1], 1))
+    model_with_dropout = create_1d_cnn_model_with_dropout((X_train.shape[1], 1), len(labels_list))
 
     model_with_dropout.compile(optimizer='adam',
                             loss='sparse_categorical_crossentropy',
@@ -201,7 +203,7 @@ def test_train_main():
 
     history_with_dropout = model_with_dropout.fit(
         X_train, y_train, 
-        epochs=41, 
+        epochs=500, 
         validation_data=(X_val, y_val),
         callbacks=[early_stopping]  # Include the early stopping callback here
     )
@@ -209,15 +211,17 @@ def test_train_main():
     test_loss, test_acc = model_with_dropout.evaluate(X_test, y_test, verbose=2)
     print(f"Test accuracy: {test_acc}, Test loss: {test_loss}")
 
-    model_with_dropout.save("Final/asl_v3_1.keras")
+    model_with_dropout.save("Final/asl_v3_5_ck_mixed_500epoch_earlystop_true_mid_complex_model.keras")
     # model.summary()
    
 def test_model():
     # Load the model
-    model = tf.keras.models.load_model("Final/asl_v3_1.keras")
+    # model = tf.keras.models.load_model("Final/asl_v3_3_ck_gestures_500epoch_earlystop_true_mid_complex_model.keras")
+
+    model = tf.keras.models.load_model("Final/asl_v2_3_30fps.keras")
 
     # Load a sample gesture file
-    test_file_path = 'Final/JSON_Data/testing/iloveyou_6.json'
+    test_file_path = 'Final/JSON_Data/testing/hello_5.json'
 
     # Make a prediction
     predicted_label, confidence = predict_new_gesture(test_file_path, model)
@@ -252,9 +256,9 @@ def predict_new_gesture(file_path, model):
     return predicted_label, confidence
 
 
-def predict_new_gesture_prenormalized(gesture_data, model):
+def predict_new_gesture_prenormalized(gesture_data, model, labels_list):
     # this inputs already processed and normalized data. 
-    gesture_data = gesture_data.reshape(-1, 20, 3) # reshape for a single sample
+    # gesture_data = gesture_data.reshape(-1, 20, 3) # reshape for a single sample
 
     # Make a prediction
     predicted_probabilities = model.predict(gesture_data)
@@ -266,27 +270,70 @@ def predict_new_gesture_prenormalized(gesture_data, model):
     confidence = np.max(predicted_probabilities) * 100
     
     # Map the class to its label
-    class_labels = {0: "book", 1: "hello", 2: "I love you", 3: "yes", 4: "no"}
-    predicted_label = class_labels[predicted_class[0]]
+    
+    predicted_label = labels_list[predicted_class[0]]
 
     return predicted_label, confidence
     
-def create_1d_cnn_model_with_dropout(input_shape):
+def create_1d_cnn_model_with_dropout(input_shape, label_count):
     model = models.Sequential()
     
-    model.add(layers.Conv1D(64, 3, activation='relu', input_shape=input_shape))
+    # Input convolutional layer
+    model.add(layers.Conv1D(16, 3, activation='relu', padding='same', input_shape=input_shape))
     model.add(layers.MaxPooling1D(2))
-    model.add(layers.Dropout(0.5))  # Dropout layer after pooling
+    model.add(layers.Dropout(0.2))  # Adjusting dropout slightly
     
-    model.add(layers.Conv1D(128, 3, activation='relu'))
+    # Adding an additional convolutional layer in the first block for more feature extraction capability
+    model.add(layers.Conv1D(16, 3, activation='relu', padding='same'))
+    model.add(layers.MaxPooling1D(2))
+    model.add(layers.Dropout(0.2))  # Keeping dropout consistent in early layers
+
+    # Second convolutional block
+    model.add(layers.Conv1D(32, 3, activation='relu', padding='same'))
+    model.add(layers.Conv1D(32, 3, activation='relu', padding='same'))  # New: Adding another layer here for depth
+    model.add(layers.MaxPooling1D(2))
+    model.add(layers.Dropout(0.25))  # Slight increase in dropout for added complexity
+
+    # Global pooling to efficiently reduce dimensionality
     model.add(layers.GlobalMaxPooling1D())
+
+    # Enhanced dense layer
+    model.add(layers.Dense(256, activation='relu'))  # Increased units for a more complex model
+    model.add(layers.Dropout(0.35))  # Adjusting dropout to balance the increased dense layer complexity
     
-    model.add(layers.Dense(128, activation='relu'))
-    model.add(layers.Dropout(0.5))  # Another dropout layer before the final layer
-    
-    model.add(layers.Dense(5, activation='softmax'))  # Assuming 5 gestures
+    # Output layer
+    model.add(layers.Dense(label_count, activation='softmax'))
     
     return model
+
+
+# FIXME: Best model so far. Keeping this commented out for now.
+# def create_1d_cnn_model_with_dropout(input_shape, label_count):
+#     model = models.Sequential()
+    
+#     # Input convolutional layer
+#     model.add(layers.Conv1D(16, 3, activation='relu', padding='same', input_shape=input_shape))
+#     model.add(layers.MaxPooling1D(2))
+#     model.add(layers.Dropout(0.2))  # Minimal dropout for simplicity
+    
+#     # Reduced to a single convolutional block
+#     model.add(layers.Conv1D(32, 3, activation='relu', padding='same'))
+#     model.add(layers.MaxPooling1D(2))
+#     model.add(layers.Dropout(0.25))
+
+#     # Skipping additional convolutional blocks and complex structures
+
+#     # Global pooling to reduce dimensionality without dense layers
+#     model.add(layers.GlobalMaxPooling1D())
+
+#     # Simplified dense layer
+#     model.add(layers.Dense(128, activation='relu'))
+#     model.add(layers.Dropout(0.3))
+    
+#     # Output layer
+#     model.add(layers.Dense(label_count, activation='softmax'))
+    
+#     return model
 
 def create_1d_cnn_model(input_shape):
     model = models.Sequential()
@@ -302,80 +349,6 @@ def create_1d_cnn_model(input_shape):
 
     return model
 
-# TF LITE
-def convert_to_tflite(model_path, tflite_model_path):
-    # Load the TensorFlow model
-    model = tf.keras.models.load_model(model_path)
-
-    # Convert the model to TensorFlow Lite format
-    converter = tf.lite.TFLiteConverter.from_keras_model(model)
-
-    # Apply quantization (Optional)
-    converter.optimizations = [tf.lite.Optimize.DEFAULT]
-
-    # Convert the model
-    tflite_model = converter.convert()
-
-    # Save the converted model
-    with open(tflite_model_path, 'wb') as f:
-        f.write(tflite_model)
-
-    print(f"Model converted and saved to {tflite_model_path}")
-
-def load_tflite_model(tflite_model_path):
-    # Load the TFLite model and allocate tensors
-    interpreter = tf.lite.Interpreter(model_path=tflite_model_path)
-    interpreter.allocate_tensors()
-    return interpreter
-
-def predict_new_gesture_tflite(gesture_data, interpreter):
-    # Assuming gesture_data is already aggregated and needs reshaping and type conversion
-
-    # Get input details and check the expected input shape
-    input_details = interpreter.get_input_details()
-    expected_shape = input_details[0]['shape']
-    print(f"Expected input shape: {expected_shape}")
-
-    # If necessary, adjust the logic here to ensure gesture_data matches the expected_shape
-    # For now, let's reshape it as expected
-    # Ensure the data is of type np.float32
-    gesture_data = gesture_data.astype(np.float32)
-
-    # Reshape the data to match the expected input shape
-    # Make sure the total number of elements matches
-    if gesture_data.size == expected_shape[1] * expected_shape[2] * expected_shape[3]:
-        gesture_data = gesture_data.reshape(expected_shape)
-    else:
-        raise ValueError(f"Data shape mismatch. Data has {gesture_data.size} elements, but model expects {expected_shape[1] * expected_shape[2] * expected_shape[3]}")
-
-    # Set the tensor
-    interpreter.set_tensor(input_details[0]['index'], gesture_data)
-
-    # Run the model
-    interpreter.invoke()
-
-    # Extract the output
-    output_details = interpreter.get_output_details()
-    output_data = interpreter.get_tensor(output_details[0]['index'])
-
-    print(f"Output data shape: {output_data.shape}")  # Debug print
-
-    # Find the class with the highest probability
-    predicted_class = np.argmax(output_data, axis=1)
-    confidence = np.max(output_data) * 100
-
-    print(f"Predicted class index: {predicted_class}")  # Debug print
-
-    # Map the class to its label
-    class_labels = {0: "book", 1: "hello", 2: "I love you", 3: "yes", 4: "no"}
-    try:
-        predicted_label = class_labels[predicted_class[0]]
-    except IndexError as e:
-        print(f"IndexError: {e}. Predicted class index was {predicted_class[0]}")
-        predicted_label = "Unknown"
-
-    return predicted_label, confidence
-
-test_train_main()
+# test_train_main()
 #test_model()
 #main()

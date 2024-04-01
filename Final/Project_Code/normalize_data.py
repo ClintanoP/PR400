@@ -105,7 +105,7 @@ def aggregate_gesture_data(file_paths):
                 frame_data = []
                 for joint, bones in frame.items():  # Iterate over each joint and its bones
                     for bone, coords in bones.items():  # Get coordinates
-                        if 0 in coords:  # Check for zeros
+                        if 0.0 in coords:  # Check for zeros
                             file_has_zero = True
                             break  # Stop processing this file
                         frame_data.extend(coords)  # Add coordinates to frame data
@@ -133,25 +133,44 @@ def aggregate_gesture_data_non_file(hands_data):
                 for bone, coords in bones.items():  # Get coordinates
                     frame_data.extend(coords)  # Add coordinates to frame data
             all_gesture_data.append(frame_data)
+        print(hand_data)
     return np.array(all_gesture_data)
 
 
 # FOR NEW DATA
 
+def check_hand_coordinates(frame):
+    is_zero = True
+    for hand_type in ['hand_left', 'hand_right']:
+        for dimension in ['x', 'y', 'z']:
+            if frame['skeleton'][hand_type][dimension][0] > 0 or frame['skeleton'][hand_type][dimension][0] < 0:
+                is_zero = False
+            else:
+                is_zero = True
+                break
+    return is_zero
+
 def get_dataset_json(file_path, label, index, output_dir):
     all_json_data = {"Left": [], "Right": []}
 
     json_data = read_json_file(file_path)
+    
     for frame in json_data['frames']:
+        if check_hand_coordinates(frame):
+            return
         all_json_data['Left'].append(hand_to_json(frame['skeleton']['hand_left']))
         all_json_data['Right'].append(hand_to_json(frame['skeleton']['hand_right']))
 
     filename = f"{label}_{index}.json"
     filepath = os.path.join(output_dir, filename)
 
-    with open(filepath, "w") as json_file:
-        json.dump(all_json_data, json_file)
-        print(f'Recording saved as {filepath}')
+    try:
+        with open(filepath, "w") as json_file:
+            json.dump(all_json_data, json_file)
+            print(f'Saved as {filepath}')
+    except IOError as e:
+        print(f"Failed to save {filepath}: {e}")
+
 
 
 
@@ -176,7 +195,7 @@ def finger_to_dict(finger, dist, int, prox, meta):
 
 #get_dataset_json(f'C:/Users/Ck/Desktop/asl-skeleton3d/normalized/3d/accident-590901.json')
 
-file_path = (f'C:/Users/Ck/Desktop/asl-skeleton3d/ck_normalised/')
+file_path = (f'/Users/ck/Desktop/asl-dataset/ck_normalised/')
 
 def get_file_paths_and_save_filtered_counts1(base_dir):
     # Dictionary to hold the file paths for each gesture (label)
@@ -188,7 +207,7 @@ def get_file_paths_and_save_filtered_counts1(base_dir):
     # Sort files into their respective lists based on the label extracted from the file name
     for file_name in json_files:
         # Extract the label (gesture name) from the file name, assuming it's before the last dash
-        gesture_name = os.path.basename(file_name).rsplit('_', 1)[0]
+        gesture_name = os.path.basename(file_name).rsplit('-', 1)[0]
 
         # Add the file path to the list associated with the label in the dictionary
         if gesture_name in gesture_file_paths:
@@ -204,7 +223,7 @@ def get_file_paths_and_save_filtered_counts1(base_dir):
 
 def get_file_paths_and_save_filtered_counts():
     # Base directory where the JSON files are located
-    base_dir = file_path
+    base_dir = '/Users/ck/Desktop/asl-dataset/ck_normalised/'
 
     # Dictionary to hold the file paths for each gesture
     gesture_file_paths = {}
@@ -215,7 +234,7 @@ def get_file_paths_and_save_filtered_counts():
     # Sort files into their respective lists
     for file_name in json_files:
         # Extract the gesture name from the file name by splitting on the last dash
-        gesture_name = os.path.basename(file_name).rsplit('-', 1)[0]
+        gesture_name = os.path.basename(file_name).rsplit('_', 1)[0]
 
         # Add the file path to the corresponding gesture list in the dictionary
         if gesture_name in gesture_file_paths:
@@ -227,23 +246,23 @@ def get_file_paths_and_save_filtered_counts():
     for gesture in gesture_file_paths:
         gesture_file_paths[gesture].sort()
 
-    # Save the counts to a text file, only for gestures with 5 or more occurrences
-    #with open('gesture_filtered.txt', 'w') as f:
-    #    for gesture, files in gesture_file_paths.items():
-    #        if len(files) >= 6:
-    #            # Write the gesture name and the number of occurrences to the file
-    #            f.write(f"{gesture}\n")
+    # Save the counts to a text file, only for gestures with x or more occurrences
+    # with open('gesture_filtered.txt', 'w') as f:
+    #     for gesture, files in gesture_file_paths.items():
+    #         if len(files) >= 10:
+    #             # Write the gesture name and the number of occurrences to the file
+    #             f.write(f"{gesture}\n")
     
     return gesture_file_paths
 
 
 def process_datasets(base_dir, output_dir):
-    file_paths_dict = get_file_paths_and_save_filtered_counts(base_dir)
+    file_paths_dict = get_file_paths_and_save_filtered_counts1(base_dir)
     
     for label, files in file_paths_dict.items():
         for index, file_path in enumerate(files, start=1):
             get_dataset_json(file_path, label, index, output_dir)
 
-# process_datasets(file_path, 'C:/Users/Ck/Desktop/asl-skeleton3d/ck_normalised/')
+#process_datasets('/Users/ck/Desktop/asl-dataset/normalized/3d/', '/Users/ck/Desktop/asl-dataset/ck_normalised/')
 
-get_file_paths_and_save_filtered_counts1(file_path)
+#get_file_paths_and_save_filtered_counts()

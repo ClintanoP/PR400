@@ -39,12 +39,12 @@ def fist_made(hand: ldt):
 
 class HandListener(leap.Listener):
     def on_tracking_event(self, event):
-        if event.tracking_frame_id % 4 == 0:  # 30fps
-            manage_recording_state(event)
-            if is_recording:
-                for hand in event.hands:
-                    hand_type = 'Left' if str(hand.type) == 'HandType.Left' else 'Right'
-                    recorded_json[hand_type].append(hand_to_json(hand))
+        # if event.tracking_frame_id % 4 == 0:  # we_fps
+        manage_recording_state(event)
+        if is_recording:
+            for hand in event.hands:
+                hand_type = 'Left' if str(hand.type) == 'HandType.Left' else 'Right'
+                recorded_json[hand_type].append(hand_to_json(hand))
 
 def manage_recording_state(event):
     global is_recording, cooldown_time, last_record_time, recording_start_time
@@ -71,7 +71,7 @@ def start_recording():
 
 def stop_recording():
     global is_recording, recorded_json
-    frames_to_remove = 30  # Number of frames to remove at the end
+    frames_to_remove = 120  # Number of frames to remove at the end
 
     if len(recorded_json['Left']) > frames_to_remove:
         recorded_json['Left'] = recorded_json['Left'][:-frames_to_remove]
@@ -85,7 +85,7 @@ def stop_recording():
 
 def buffer_frame(event):
     global buffer_frames
-    buffer_size = 30
+    buffer_size = 120
     for hand in event.hands:
         hand_type = 'Left' if str(hand.type) == 'HandType.Left' else 'Right'
         buffer_frames[hand_type].append(hand_to_json(hand))
@@ -98,7 +98,7 @@ def save_recording():
     if (filename != 'delete'):
         json_string = json.dumps(recorded_json)
 
-        filepath = f"Final/JSON_Data/30fps/{filename}.json"
+        filepath = f"Final/JSON_Data/120fps/{filename}.json"
 
         with open(filepath, "w") as json_file:
             json_file.write(json_string)
