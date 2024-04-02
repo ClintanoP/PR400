@@ -58,87 +58,6 @@ def get_file_paths(base_dir):
     
     return gesture_file_paths
 
-def main():
-    gesture_file_paths = get_file_paths()
-
-    gesture_1_data = normalize.aggregate_gesture_data(gesture_file_paths['book'])
-    gesture_2_data = normalize.aggregate_gesture_data(gesture_file_paths['hello'])
-    gesture_3_data = normalize.aggregate_gesture_data(gesture_file_paths['iloveyou'])
-    gesture_4_data = normalize.aggregate_gesture_data(gesture_file_paths['yes'])
-    gesture_5_data = normalize.aggregate_gesture_data(gesture_file_paths['no'])
-    
-    label_book = 0
-    label_hello = 1
-    label_iloveyou = 2
-    label_yes = 3
-    label_no = 4
-
-    labels_gesture_1 = np.full(len(gesture_1_data), label_book)
-    labels_gesture_2 = np.full(len(gesture_2_data), label_hello)
-    labels_gesture_3 = np.full(len(gesture_3_data), label_iloveyou)
-    labels_gesture_4 = np.full(len(gesture_4_data), label_yes)
-    labels_gesture_5 = np.full(len(gesture_5_data), label_no)
-
-    X = np.concatenate([gesture_1_data, gesture_2_data, gesture_3_data, gesture_4_data, gesture_5_data])
-    y = np.concatenate([labels_gesture_1, labels_gesture_2, labels_gesture_3, labels_gesture_4, labels_gesture_5])
-
-    print(f"Shape of X: {X.shape}, Shape of y: {y.shape}")
-
-    X_train, X_temp, y_train, y_temp = train_test_split(X, y, test_size=0.3, random_state=42, stratify=y)
-    X_val, X_test, y_val, y_test = train_test_split(X_temp, y_temp, test_size=0.5, random_state=42, stratify=y_temp)
-
-    print(f"Shape of X train: {X_train.shape}, Shape of y train: {y_train.shape}")
-
-    tf.config.optimizer.set_jit(True)
-
-    # dense, working model.
-    model = tf.keras.Sequential([
-        tf.keras.layers.InputLayer(input_shape=(X_train.shape[1],)),
-        tf.keras.layers.Dense(64, activation='relu'),
-        tf.keras.layers.Dense(48, activation='elu'),
-        tf.keras.layers.Dense(5, activation='softmax')  # Assuming 5 gestures
-    ])
-    
-    # new model, using convolutional layers.
-    # Declare the model - using convolutional layers
-    # model = tf.keras.models.Sequential([
-    #     tf.keras.layers.InputLayer(input_shape=(20, 3)), # Reshaped input
-    #     tf.keras.layers.Conv1D(filters=64, kernel_size=3, activation='relu'),
-    #     tf.keras.layers.MaxPooling1D(pool_size=2),
-    #     tf.keras.layers.Conv1D(filters=128, kernel_size=3, activation='relu'),
-    #     tf.keras.layers.MaxPooling1D(pool_size=2),
-    #     tf.keras.layers.Flatten(), # Flatten the output to feed into dense layers
-    #     tf.keras.layers.Dense(128, activation='relu'),
-    #     tf.keras.layers.Dense(5, activation='softmax') # Output layer
-    # ])
-
-    model.compile(optimizer='adam',
-                  loss='sparse_categorical_crossentropy',
-                  metrics=['accuracy'])
-    
-    model.fit(X_train, y_train, epochs=10, validation_data = (X_val, y_val))
-
-    test_loss, test_accuracy = model.evaluate(X_test, y_test)
-
-    # print the accuracy.
-    print(f"Test accuracy: {test_accuracy}")
-    
-    # save the model locally. 
-    model.save("Final/asl_v2_6_30fps.keras")
-
-    ###################################################################################################################
-    # now to optimize using quantification
-    # converter = tf.lite.TFLiteConverter.from_keras_model(model)
-    # converter.optimizations = [tf.lite.Optimize.DEFAULT]
-
-    # tflite_quant_model = converter.convert()
-
-    # # Save the quantized model
-    # with open('Final/asl_quantized_v1.tflite', 'wb') as f:
-    #     f.write(tflite_quant_model)
-
-    ###################################################################################################################
-
 def read_labels_from_file(file_path):
     with open(file_path, 'r') as file:
         labels = file.read().splitlines()
@@ -167,8 +86,6 @@ def test_train_main():
         
         # Store label value in the dictionary
         label_values[label] = i
-        print(f"Label: {label}, Value: {i}")
-        print(f"Shape of gesture data: {gesture_data.shape}, Shape of labels: {labels.shape}")
 
 
     # Concatenate all gesture data and labels to form the dataset
@@ -211,7 +128,7 @@ def test_train_main():
     test_loss, test_acc = model_with_dropout.evaluate(X_test, y_test, verbose=2)
     print(f"Test accuracy: {test_acc}, Test loss: {test_loss}")
 
-    model_with_dropout.save("Final/asl_v3_5_ck_mixed_500epoch_earlystop_true_mid_complex_model.keras")
+    model_with_dropout.save("Final/asl_v3_6_ck_mixed_500epoch_earlystop_true_mid_complex_model.keras")
     # model.summary()
    
 def test_model():
@@ -226,7 +143,6 @@ def test_model():
     # Make a prediction
     predicted_label, confidence = predict_new_gesture(test_file_path, model)
     print(f"Predicted Gesture: {predicted_label} with confidence {confidence:.2f}%")
-
 
 def predict_new_gesture(file_path, model):
     # Process the new gesture file
@@ -254,7 +170,6 @@ def predict_new_gesture(file_path, model):
     predicted_label = class_labels[predicted_class[0]]
 
     return predicted_label, confidence
-
 
 def predict_new_gesture_prenormalized(gesture_data, model, labels_list):
     # this inputs already processed and normalized data. 

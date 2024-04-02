@@ -223,8 +223,8 @@ def get_file_paths_and_save_filtered_counts1(base_dir):
 
 def get_file_paths_and_save_filtered_counts():
     # Base directory where the JSON files are located
-    base_dir = '/Users/ck/Desktop/asl-dataset/ck_normalised/'
-
+    # base_dir = 'C:/Users/Ck/Desktop/asl-skeleton3d/ck_normalised/'
+    base_dir = 'Final/JSON_Data/120fps/'
     # Dictionary to hold the file paths for each gesture
     gesture_file_paths = {}
 
@@ -247,11 +247,11 @@ def get_file_paths_and_save_filtered_counts():
         gesture_file_paths[gesture].sort()
 
     # Save the counts to a text file, only for gestures with x or more occurrences
-    # with open('gesture_filtered.txt', 'w') as f:
-    #     for gesture, files in gesture_file_paths.items():
-    #         if len(files) >= 10:
-    #             # Write the gesture name and the number of occurrences to the file
-    #             f.write(f"{gesture}\n")
+    with open('ck_mixed_dataset_gesture_filtered.txt', 'w') as f:
+        for gesture, files in gesture_file_paths.items():
+            # if len(files) >= 10:
+                # Write the gesture name and the number of occurrences to the file
+            f.write(f"{gesture}\n")
     
     return gesture_file_paths
 
@@ -263,6 +263,6 @@ def process_datasets(base_dir, output_dir):
         for index, file_path in enumerate(files, start=1):
             get_dataset_json(file_path, label, index, output_dir)
 
-#process_datasets('/Users/ck/Desktop/asl-dataset/normalized/3d/', '/Users/ck/Desktop/asl-dataset/ck_normalised/')
+# process_datasets('/Users/ck/Desktop/asl-dataset/normalized/3d/', '/Users/ck/Desktop/asl-dataset/ck_normalised/')
 
-#get_file_paths_and_save_filtered_counts()
+# get_file_paths_and_save_filtered_counts()
