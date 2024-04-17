@@ -66,7 +66,9 @@ def generate_palm_coord(mid_finger_base, wrist_coordinate):
 def process_frames(hand_frames):
     normalized_frames = []
     for frame in hand_frames:
-        palm_coord = generate_palm_coord(frame['middle']['metacarpal'], frame['wrist'])
+        palm_coord = frame['palm']
+        if frame['palm'] == [0, 0, 0]:  # Skip frames with zero coordinates
+            palm_coord = generate_palm_coord(frame['middle']['metacarpal'], frame['wrist'])
         # Assuming the wrist coordinate is available and named 'wrist'
         wrist_coord = frame.get('wrist', palm_coord)  # Default to palm if wrist not available
         # Reference point for scale factor (e.g., tip of the middle finger distal bone)

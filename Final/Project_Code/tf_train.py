@@ -128,7 +128,7 @@ def test_train_main():
     test_loss, test_acc = model_with_dropout.evaluate(X_test, y_test, verbose=2)
     print(f"Test accuracy: {test_acc}, Test loss: {test_loss}")
 
-    model_with_dropout.save("Final/asl_v3_6_ck_mixed_500epoch_earlystop_true_mid_complex_model.keras")
+    model_with_dropout.save("Final/asl_v3_6_2_ck_mixed_500epoch_earlystop_true_mid_complex_model.keras")
     # model.summary()
    
 def test_model():

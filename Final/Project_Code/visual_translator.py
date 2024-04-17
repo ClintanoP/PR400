@@ -21,7 +21,7 @@ hand_colour = (255, 255, 255)
 labels_list = tf_custom.read_labels_from_file("ck_mixed_dataset_gesture_filtered.txt")
 
 # normal model
-asl_model = tf.keras.models.load_model("Final/asl_v3_6_ck_mixed_500epoch_earlystop_true_mid_complex_model.keras")
+asl_model = tf.keras.models.load_model("Final/asl_v3_6_2_ck_mixed_500epoch_earlystop_true_mid_complex_model.keras")
 
 had_hand_in_previous_frame = False
 
