@@ -156,9 +156,9 @@ def get_file_paths_and_save_filtered_counts(base_dir):
         gesture_file_paths[gesture].sort()
 
     # Save the counts to a text file, only for gestures with x or more occurrences
-    with open('ck_mixed_dataset_gesture_filtered.txt', 'w') as f:
+    with open('asl_dataset_valid_full.txt', 'w') as f:
         for gesture, files in gesture_file_paths.items():
-            if len(files) >= 5:
+            if len(files) >= 8:
                 # Write the gesture name and the number of occurrences to the file
                 f.write(f"{gesture}\n")
     
@@ -249,7 +249,7 @@ def normalize_data(data):
 # run the program
 # process_and_save_json_dataset('/Users/ck/Desktop/asl-dataset/normalized/3d/', '/Users/ck/Desktop/asl-dataset/ck_normalised/')
 # get_file_paths_and_save_filtered_counts('/Users/ck/Desktop/asl-dataset/ck_normalised/')
-get_file_paths_and_save_filtered_counts('Final/JSON_Data/120fps/')
+# get_file_paths_and_save_filtered_counts('Final/JSON_Data/120fps/')
 
 
 

@@ -20,13 +20,13 @@ batch_size = 15
 
 hand_colour = (255, 255, 255)
 
-labels_list = tf_custom.read_labels_from_file("ck_made_gesture_filtered.txt")
+labels_list = tf_custom.read_labels_from_file("ck_mixed_dataset_gesture_filtered.txt")
 
 hands_data_queue = Queue()
 
 
 # normal model
-asl_model = tf.keras.models.load_model("Final/asl_v3_4_2_ck_only_500epoch_earlystop_true_mid_complex_model.keras")
+asl_model = tf.keras.models.load_model("Final/asl_v3_6_2_ck_mixed_500epoch_earlystop_true_mid_complex_model.keras")
 
 
 predicted_gesture = ""
@@ -151,15 +151,15 @@ class Canvas:
 
             # continually push the last 6 frames. add one frame to the dict, remove the first.
             # then check against model 
-            if event.tracking_frame_id % 2 == 0:
-                hand_type = 'Left' if str(hand.type) == 'HandType.Left' else 'Right'
-                hands_data[hand_type].append(record.hand_to_json(hand))
-                hands_data['Count'] += 1
+            # if event.tracking_frame_id % 0 == 0:
+            hand_type = 'Left' if str(hand.type) == 'HandType.Left' else 'Right'
+            hands_data[hand_type].append(record.hand_to_json(hand))
+            hands_data['Count'] += 1
 
-                if hands_data['Count'] == 60:
-                    # Process the 90 hand frames
-                    prediction_thread = threading.Thread(target=process_and_predict, args=(self, hands_data.copy(), asl_model, labels_list, hands_data_queue))
-                    prediction_thread.start()
+            if hands_data['Count'] == 60:
+                # Process the 90 hand frames
+                prediction_thread = threading.Thread(target=process_and_predict, args=(self, hands_data.copy(), asl_model, labels_list, hands_data_queue))
+                prediction_thread.start()
                     
 
         # remove an entry if no hand in the detected area.

@@ -74,7 +74,6 @@ def process_frames(hand_frames):
         # Reference point for scale factor (e.g., tip of the middle finger distal bone)
         reference_coord = frame['middle']['distal']  
         scale_factor = calculate_scale_factor(wrist_coord, reference_coord)
-
         normalized_frame = normalize_coordinates(frame, palm_coord, scale_factor)
         normalized_frames.append(normalized_frame)
     return normalized_frames
